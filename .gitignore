@@ -1,0 +1,25 @@
+# Sensitive / unpublished — NEVER commit
+# (competitor papers, your unpublished paper, private logs, strategy docs)
+*.pdf
+*.docx
+experment.txt
+CLAUDE.md
+PROJECT_OVERVIEW.md
+RESEARCH_PLAN.md
+PAPER_VS_CODE_GAP.md
+
+# Data — large, lives in Google Drive, not git
+*.csv
+
+# Notebooks with embedded outputs — large/binary
+*.ipynb
+
+# Generated experiment outputs
+phase1_metrics.json
+*.png
+
+# Python / OS junk
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
