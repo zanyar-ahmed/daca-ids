@@ -8,11 +8,16 @@ is hand-typed.
 `phase1_autoencoder_ids.py` trains an autoencoder on *Normal* traffic only, then scores anomalies
 by reconstruction error and reports real Accuracy / Precision / Recall / F1 / FPR + ROC-AUC.
 
-### Run on Google Colab (GPU)
-1. Runtime → Change runtime type → **GPU**.
-2. In a cell:
+### Run on Google Colab (GPU) — private repo
+1. Create a GitHub token: GitHub → Settings → Developer settings → **Fine-grained tokens** →
+   give it *read-only* access to the `daca-ids` repo.
+2. In Colab, click the **🔑 (Secrets)** icon in the left sidebar and add a secret named
+   `GH_TOKEN` with the token value (toggle "Notebook access" on).
+3. Runtime → Change runtime type → **GPU**, then in a cell:
    ```python
-   !git clone https://github.com/zanyar-ahmed/daca-ids.git
+   from google.colab import userdata
+   tok = userdata.get('GH_TOKEN')
+   !git clone https://{tok}@github.com/zanyar-ahmed/daca-ids.git
    %cd daca-ids
    !python phase1_autoencoder_ids.py --epochs 30      # quick test
    # full run:
@@ -27,7 +32,7 @@ Data is read from `/content/drive/MyDrive/dataset/Train_data.csv` and `Test_data
    ```bash
    git add -A && git commit -m "describe change" && git push
    ```
-3. In Colab, pull and re-run:
+3. In Colab, pull and re-run (the token is already saved in the cloned repo's remote):
    ```python
    !git pull
    !python phase1_autoencoder_ids.py
