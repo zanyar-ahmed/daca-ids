@@ -77,10 +77,54 @@ def _to_binary_labels(series: pd.Series) -> np.ndarray:
     return (series.astype(str).str.strip().str.lower() != "normal").astype(int).values
 
 
-def load_csv(path: str):
-    """Load a CSV, return (features_df, labels or None)."""
-    df = pd.read_csv(path)
+# Canonical NSL-KDD column order (41 features). Used when a file has NO header row.
+NSL_KDD_FEATURES = [
+    "duration", "protocol_type", "service", "flag", "src_bytes", "dst_bytes",
+    "land", "wrong_fragment", "urgent", "hot", "num_failed_logins", "logged_in",
+    "num_compromised", "root_shell", "su_attempted", "num_root", "num_file_creations",
+    "num_shells", "num_access_files", "num_outbound_cmds", "is_host_login",
+    "is_guest_login", "count", "srv_count", "serror_rate", "srv_serror_rate",
+    "rerror_rate", "srv_rerror_rate", "same_srv_rate", "diff_srv_rate",
+    "srv_diff_host_rate", "dst_host_count", "dst_host_srv_count",
+    "dst_host_same_srv_rate", "dst_host_diff_srv_rate", "dst_host_same_src_port_rate",
+    "dst_host_srv_diff_host_rate", "dst_host_serror_rate", "dst_host_srv_serror_rate",
+    "dst_host_rerror_rate", "dst_host_srv_rerror_rate",
+]
+
+
+def _read_nsl_kdd(path: str) -> pd.DataFrame:
+    """Read an NSL-KDD CSV whether or not it has a header row.
+
+    Many NSL-KDD CSVs are headerless (the first line is already data). If we let
+    pandas use that first data row as the header, train and test end up with
+    different column names and downstream transforms break. So: detect the header
+    and, if absent, assign the canonical NSL-KDD column names by position.
+    """
+    head = pd.read_csv(path, nrows=1, header=None)
+    ncols = head.shape[1]
+    first_vals = [str(x).strip().lower() for x in head.iloc[0].tolist()]
+    has_header = any(name in first_vals for name in ("protocol_type", "duration", "src_bytes"))
+
+    if has_header:
+        df = pd.read_csv(path)
+    else:
+        df = pd.read_csv(path, header=None)
+        if ncols == 41:
+            cols = list(NSL_KDD_FEATURES)               # features only (no label)
+        elif ncols == 42:
+            cols = list(NSL_KDD_FEATURES) + ["class"]   # + binary/attack label
+        elif ncols == 43:
+            cols = list(NSL_KDD_FEATURES) + ["class", "difficulty"]
+        else:
+            cols = [f"f{i}" for i in range(ncols)]      # unknown schema: positional
+        df.columns = cols
     df.columns = [str(c).strip() for c in df.columns]
+    return df
+
+
+def load_csv(path: str):
+    """Load a CSV (header or headerless), return (features_df, labels or None)."""
+    df = _read_nsl_kdd(path)
     label_col = _find_label_col(df)
     labels = _to_binary_labels(df[label_col]) if label_col is not None else None
     drop = [c for c in df.columns if str(c).strip().lower() in NON_FEATURE_COLS]
