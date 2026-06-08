@@ -7,6 +7,8 @@ CLAUDE.md
 PROJECT_OVERVIEW.md
 RESEARCH_PLAN.md
 PAPER_VS_CODE_GAP.md
+RESULTS_SUMMARY.md
+PROJECT_REPORT.md
 
 # Data — large, lives in Google Drive, not git
 *.csv
