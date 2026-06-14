@@ -52,6 +52,18 @@ def build_preprocessor(train_feats):
     return ColumnTransformer([("n", StandardScaler(), num), ("c", ohe, cat)], remainder="drop"), cat, num
 
 
+def best_threshold(scores, y, n=400):
+    """The single threshold that MAXIMISES F1 on the test scores (fair, strongest threshold
+    baseline = the best any percentile cut could do). RL must beat THIS to count as a real win."""
+    qs = np.unique(np.quantile(scores, np.linspace(0.001, 0.999, n)))
+    best = None
+    for thr in qs:
+        m = p1.evaluate(scores, y, float(thr))
+        if best is None or m["f1"] > best["f1"]:
+            best = m
+    return best
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--train", default="/content/drive/MyDrive/dataset/UNSW_NB15_training-set.parquet")
@@ -118,19 +130,24 @@ def main():
     actions = np.asarray(model.predict(Ste, deterministic=True)[0]).reshape(-1)
     rl_m = p2.metrics_from_pred(p2.tiers_to_binary(actions), tel)
     base85 = p1.evaluate(ete, tel, pct["P85"]); base95 = p1.evaluate(ete, tel, pct["P95"])
+    bestthr = best_threshold(ete, tel)            # F1-optimal threshold (fair, strongest baseline)
 
     print("\n==============  UNSW-NB15 RESULTS  ==============")
-    print(f"AE detection ROC-AUC: {roc:.4f} | best threshold F1: {best_f1:.3f}")
-    print(f"{'method':<24}{'acc':>8}{'prec':>8}{'rec':>8}{'f1':>8}")
-    for n, m in [("Fixed threshold P85", base85), ("Fixed threshold P95", base95), ("RL tier-controller", rl_m)]:
-        print(f"{n:<24}{m['accuracy']:>8.3f}{m['precision']:>8.3f}{m['recall']:>8.3f}{m['f1']:>8.3f}")
-    bestfix = max(base85["f1"], base95["f1"])
-    print(f"\nVerdict: {'RL beats threshold' if rl_m['f1'] > bestfix + 1e-3 else 'RL does NOT beat threshold (same finding as NSL-KDD) ✅'}"
-          f"  (RL {rl_m['f1']:.3f} vs threshold {bestfix:.3f})")
+    print(f"AE detection ROC-AUC: {roc:.4f}")
+    print(f"{'method':<28}{'acc':>8}{'prec':>8}{'rec':>8}{'f1':>8}")
+    for n, m in [("Fixed threshold P85", base85), ("Fixed threshold P95", base95),
+                 ("Best tuned threshold (F1)", bestthr), ("RL tier-controller", rl_m)]:
+        print(f"{n:<28}{m['accuracy']:>8.3f}{m['precision']:>8.3f}{m['recall']:>8.3f}{m['f1']:>8.3f}")
+    # FAIR verdict: RL must beat the best a threshold can possibly do.
+    win = rl_m["f1"] > bestthr["f1"] + 1e-3
+    print(f"\nFair verdict (vs F1-optimal threshold): "
+          f"{'RL beats the best threshold' if win else 'RL does NOT beat a properly-tuned threshold — same finding as NSL-KDD ✅'}"
+          f"  (RL {rl_m['f1']:.3f} vs best-threshold {bestthr['f1']:.3f})")
     print("================================================")
 
     json.dump(dict(seed=a.seed, dataset="UNSW-NB15", roc_auc=roc, detection=det,
-                   rl=rl_m, fixed_P85=base85, fixed_P95=base95), open(os.path.join(a.outdir, "phase8_metrics.json"), "w"), indent=2)
+                   rl=rl_m, fixed_P85=base85, fixed_P95=base95, best_threshold=bestthr),
+              open(os.path.join(a.outdir, "phase8_metrics.json"), "w"), indent=2)
     print("Saved -> phase8_metrics.json")
 
 
