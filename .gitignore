@@ -9,9 +9,11 @@ RESEARCH_PLAN.md
 PAPER_VS_CODE_GAP.md
 RESULTS_SUMMARY.md
 PROJECT_REPORT.md
+PAPER_UPDATE_BRIEF.md
 
 # Data — large, lives in Google Drive, not git
 *.csv
+*.zip
 
 # Notebooks with embedded outputs — large/binary
 *.ipynb
