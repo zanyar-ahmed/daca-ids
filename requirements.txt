@@ -1,0 +1,12 @@
+# Pinned-ish environment for reproducing the RL-IDS experiments (Protocol #8).
+# Colab already provides most of these; versions are floors known to work.
+numpy>=1.26
+pandas>=2.0
+pyarrow>=14.0
+scipy>=1.11
+scikit-learn>=1.3
+statsmodels>=0.14
+matplotlib>=3.7
+torch>=2.2
+stable-baselines3>=2.3
+gymnasium>=0.29
