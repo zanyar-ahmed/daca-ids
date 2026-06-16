@@ -46,7 +46,15 @@ def run_dataset(name, load, preproc, epochs, seeds, timesteps):
     Str = np.concatenate([np.clip((Ztr - zmu) / zsd, -10, 10),
                           np.clip(((Etr - emu) / esd)[:, None], -10, 10)], 1).astype(np.float32)
     Ste, Ete = make_states(ae, Xte, dev, zmu, zsd, emu, esd)
-    base = p8.best_threshold(Ete, tel)["f1"]                              # F1-optimal threshold
+    base_thr = p8.best_threshold(Ete, tel)["f1"]                          # F1-optimal threshold (e only)
+    # FAIR matched-feature baseline: linear model on the SAME (z,e) state the RL agent sees
+    from sklearn.linear_model import LogisticRegression
+    lrf = LogisticRegression(class_weight="balanced", max_iter=2000).fit(Str, trl)
+    ptr = lrf.predict_proba(Str)[:, 1]; pte = lrf.predict_proba(Ste)[:, 1]
+    cuts = np.quantile(ptr, np.linspace(0.01, 0.99, 200))
+    cut = float(cuts[int(np.argmax([f1_score(trl, (ptr >= c).astype(int), zero_division=0) for c in cuts]))])
+    base_lr = float(f1_score(tel, (pte >= cut).astype(int), zero_division=0))
+    base_best = max(base_thr, base_lr)                                    # RL must beat the BEST simple learner
 
     TierEnv = p2.make_env_class(); rl_f1 = []
     for s in seeds:
@@ -58,11 +66,11 @@ def run_dataset(name, load, preproc, epochs, seeds, timesteps):
         acts = np.asarray(model.predict(Ste, deterministic=True)[0]).reshape(-1)
         f1 = float(f1_score(tel, p2.tiers_to_binary(acts), zero_division=0))
         rl_f1.append(f1); print(f"  {name} seed {s:<3} RL F1 {f1:.3f}")
-    st = H.compare_to_constant(rl_f1, base)
-    print(f"  -> {name}: baseline(F1-opt threshold) {base:.3f} | RL {st['mean']:.3f}±{st['std']:.3f} "
-          f"95% CI [{st['ci_lo']:.3f},{st['ci_hi']:.3f}] | margin {st['margin']:+.3f} | "
-          f"won {st['seeds_won']}/{st['n']} | p_wilcoxon {st['p_wilcoxon']:.4f} | d {st['cohen_d']:.2f}")
-    return dict(dataset=name, baseline=base, **st, rl_f1=rl_f1)
+    st = H.compare_to_constant(rl_f1, base_best)
+    print(f"  -> {name}: threshold(e) {base_thr:.3f} | LR(z,e) {base_lr:.3f} | best-simple {base_best:.3f} "
+          f"| RL {st['mean']:.3f}±{st['std']:.3f} CI[{st['ci_lo']:.3f},{st['ci_hi']:.3f}] "
+          f"margin {st['margin']:+.3f} won {st['seeds_won']}/{st['n']} p {st['p_wilcoxon']:.4f} d {st['cohen_d']:.2f}")
+    return dict(dataset=name, base_thr=base_thr, base_lr=base_lr, baseline=base_best, **st, rl_f1=rl_f1)
 
 
 def main():
@@ -90,12 +98,13 @@ def main():
     # Holm correction across the datasets' p-values
     p_w = [r["p_wilcoxon"] for r in rows]
     adj, rej = H.holm(p_w)
-    print("\n================  TABLE A (static detection: RL vs F1-optimal threshold)  ================")
-    print(f"{'dataset':<12}{'base':>7}{'RL mean':>9}{'±std':>7}{'margin':>8}{'won':>6}{'p_holm':>9}{'d':>7}")
+    print("\n========  TABLE A (static detection: RL vs the BEST simple learner)  ========")
+    print(f"{'dataset':<12}{'thr(e)':>8}{'LR(z,e)':>8}{'RL mean':>9}{'±std':>7}{'margin':>8}{'won':>6}{'p_holm':>9}{'d':>7}")
     for r, pa in zip(rows, adj):
-        print(f"{r['dataset']:<12}{r['baseline']:>7.3f}{r['mean']:>9.3f}{r['std']:>7.3f}"
+        print(f"{r['dataset']:<12}{r['base_thr']:>8.3f}{r['base_lr']:>8.3f}{r['mean']:>9.3f}{r['std']:>7.3f}"
               f"{r['margin']:>+8.3f}{r['seeds_won']:>4}/{r['n']}{pa:>9.4f}{r['cohen_d']:>7.2f}")
-    print("=========================================================================================")
+    print("  (margin = RL − best-simple-learner; negative ⇒ RL loses to a simple learner)")
+    print("=============================================================================")
 
     os.makedirs(os.path.join(a.outdir, "results"), exist_ok=True)
     import csv
