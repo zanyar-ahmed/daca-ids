@@ -23,23 +23,34 @@ import phase8_unsw as p8
 import exp_harness as H
 
 
-def trivial_learners(etr, ytr, ete, yte):
-    """Return metrics for: unsupervised P85 threshold, LR-on-e, best-tau-on-e."""
+def _best_f1_cutoff(score_tr, ytr, score_te):
+    """Pick the probability/score cutoff that maxes F1 on train, apply to test (fair operating pt)."""
+    from sklearn.metrics import f1_score
+    cuts = np.quantile(score_tr, np.linspace(0.01, 0.99, 200))
+    f1s = [f1_score(ytr, (score_tr >= c).astype(int), zero_division=0) for c in cuts]
+    return float(cuts[int(np.argmax(f1s))])
+
+
+def trivial_learners(etr, ytr, ete, yte, Str=None, Ste=None):
+    """Metrics for: unsupervised P85, LR-on-e, best-tau-on-e, and (if states given) LR-on-(z,e)."""
     from sklearn.linear_model import LogisticRegression
     from sklearn.metrics import f1_score
     out = {}
-    # (0) unsupervised percentile threshold (P85 of NORMAL-train errors) — 1 param, no labels
     thr85 = float(np.percentile(etr[ytr == 0], 85))
     out["Percentile P85 (unsupervised, 1p)"] = H.metrics(yte, (ete > thr85).astype(int), ete)
-    # (a) logistic regression on the single feature e — 2 params
     lr = LogisticRegression(class_weight="balanced", max_iter=2000).fit(etr.reshape(-1, 1), ytr)
     p_te = lr.predict_proba(ete.reshape(-1, 1))[:, 1]
     out["Logistic regression on e (2p)"] = H.metrics(yte, (p_te >= 0.5).astype(int), p_te)
-    # (b) best learned threshold tau* on e (max-F1 on train) — 1 param
     taus = np.quantile(etr, np.linspace(0.50, 0.999, 300))
     f1s = [f1_score(ytr, (etr >= t).astype(int), zero_division=0) for t in taus]
     tau = float(taus[int(np.argmax(f1s))])
     out["Best learned threshold on e (1p)"] = H.metrics(yte, (ete >= tau).astype(int), ete)
+    if Str is not None:
+        # FAIR matched-feature baseline: linear model on the SAME (z, e) state the RL agent sees
+        lrf = LogisticRegression(class_weight="balanced", max_iter=2000).fit(Str, ytr)
+        ptr = lrf.predict_proba(Str)[:, 1]; pte = lrf.predict_proba(Ste)[:, 1]
+        cut = _best_f1_cutoff(ptr, ytr, pte)
+        out["Logistic regression on (z,e) (~18p)"] = H.metrics(yte, (pte >= cut).astype(int), pte)
     return out
 
 
@@ -73,9 +84,14 @@ def main():
         print(f"  train {Xtr.shape}  normal={int((trl==0).sum())}  | training deterministic AE ...")
         H.set_all_seeds(0)
         ae = p3.train_ae(Xtr[trl == 0], Xtr.shape[1], dev, a.epochs, 0)
-        _, etr = p3.latent_err(ae, Xtr, dev); _, ete = p3.latent_err(ae, Xte, dev)
+        Ztr, etr = p3.latent_err(ae, Xtr, dev); Zte, ete = p3.latent_err(ae, Xte, dev)
+        zmu, zsd = Ztr.mean(0), Ztr.std(0) + 1e-8; emu, esd = float(etr.mean()), float(etr.std()) + 1e-8
+        Str = np.concatenate([np.clip((Ztr - zmu) / zsd, -10, 10),
+                              np.clip(((etr - emu) / esd)[:, None], -10, 10)], 1).astype(np.float32)
+        Ste = np.concatenate([np.clip((Zte - zmu) / zsd, -10, 10),
+                              np.clip(((ete - emu) / esd)[:, None], -10, 10)], 1).astype(np.float32)
 
-        res = trivial_learners(etr, trl, ete, tel)
+        res = trivial_learners(etr, trl, ete, tel, Str, Ste)
         print(f"  {'rule on AE error':<38}{'F1':>7}{'ROC':>7}{'PR':>7}{'acc':>7}")
         for rule, m in res.items():
             print(f"  {rule:<38}{m['F1']:>7.3f}{m['ROC_AUC']:>7.3f}{m['PR_AUC']:>7.3f}{m['accuracy']:>7.3f}")
