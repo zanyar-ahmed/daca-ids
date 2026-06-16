@@ -27,11 +27,19 @@ Needs in Drive: `Train_data.csv`, `Test_data.csv` (NSL-KDD) and the two UNSW-NB1
 ```
 → prints Table B and saves `results/exp1_trivial.csv`.
 
-## Still to build (heavier — request when ready)
-| Protocol | What | Effort |
-|----------|------|--------|
-| #2 | Per-seed CIs for Phases 2–5 (wrap each in the 15-seed harness) → Table A | 1–2 d compute |
-| #4 | RL hyperparameter sweep (Phase 2 & 6) → Table C | 0.5–1 d |
-| #5 | Adaptive-adversary + cost-ratio variants of Phase 6 → Table D (highest value) | 2–4 d |
-| #6 | CICIDS2017 third dataset (needs cleaned release downloaded) | 1–2 d |
-| #8 | Full repro: Dockerfile + `reproduce.sh` + Zenodo DOI | 0.5 d |
+## Table ↔ script map (all built)
+| Result | Script | Run on Colab |
+|--------|--------|--------------|
+| Table B (trivial learners, +LR on z,e) | `exp1_trivial_learners.py` | `!python exp1_trivial_learners.py --epochs 40` |
+| Table A (15-seed RL vs best simple learner) | `exp2_static_seeds.py` | `!python exp2_static_seeds.py --epochs 40 --timesteps 80000` |
+| Table C (hyperparameter sweep) | `exp4_hparam_sweep.py` | `!python exp4_hparam_sweep.py --epochs 40 --timesteps 80000` |
+| Table D (adaptive adversary + cost ratio) | `exp5_adaptive_adversary.py` | `!python exp5_adaptive_adversary.py --seeds 8 --timesteps 100000` |
+| Phase 6/7 stats | `exp_harness.compare_to_constant` | (done: p=0.006, d=−1.25) |
+
+## Reproducibility (#8)
+- `requirements.txt`, `Dockerfile`, `reproduce.sh` (regenerates every table; set `DATASET_DIR`).
+- Vector figures (#7): `exp_harness.set_pub_style()` + save figures as `.pdf` (TrueType, 300 dpi).
+
+## Deferred (future work)
+- #6 CICIDS2017 third dataset — needs the cleaned (WTMC-2021) release downloaded + preprocessed;
+  listed as future work (days of cleaning for modest payoff).
