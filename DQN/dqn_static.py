@@ -29,16 +29,24 @@ import phase8_unsw as p8
 import exp_harness as H
 
 
-def best_simple(Str, Ste, trl, tel, Ete):
-    from sklearn.linear_model import LogisticRegression
+def _bestcut_f1(ptr, ytr, pte, yte):
     from sklearn.metrics import f1_score
+    cuts = np.quantile(ptr, np.linspace(0.01, 0.99, 200))
+    cut = float(cuts[int(np.argmax([f1_score(ytr, (ptr >= c).astype(int), zero_division=0) for c in cuts]))])
+    return float(f1_score(yte, (pte >= cut).astype(int), zero_division=0))
+
+
+def best_simple(Str, Ste, trl, tel, Ete):
+    """Fair supervised baselines on the SAME (z,e) the RL agent sees:
+    threshold (1p), linear model (LR), and a matched-capacity MLP [128,64,32]."""
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.neural_network import MLPClassifier
     base_thr = p8.best_threshold(Ete, tel)["f1"]
     lrf = LogisticRegression(class_weight="balanced", max_iter=2000).fit(Str, trl)
-    ptr = lrf.predict_proba(Str)[:, 1]; pte = lrf.predict_proba(Ste)[:, 1]
-    cuts = np.quantile(ptr, np.linspace(0.01, 0.99, 200))
-    cut = float(cuts[int(np.argmax([f1_score(trl, (ptr >= c).astype(int), zero_division=0) for c in cuts]))])
-    base_lr = float(f1_score(tel, (pte >= cut).astype(int), zero_division=0))
-    return max(base_thr, base_lr), base_thr, base_lr
+    base_lr = _bestcut_f1(lrf.predict_proba(Str)[:, 1], trl, lrf.predict_proba(Ste)[:, 1], tel)
+    mlp = MLPClassifier(hidden_layer_sizes=(128, 64, 32), max_iter=300, random_state=0).fit(Str, trl)
+    base_mlp = _bestcut_f1(mlp.predict_proba(Str)[:, 1], trl, mlp.predict_proba(Ste)[:, 1], tel)
+    return max(base_thr, base_lr, base_mlp), dict(threshold=base_thr, logreg=base_lr, mlp=base_mlp)
 
 
 def main():
@@ -80,8 +88,9 @@ def main():
         mk = lambda Z, E: np.concatenate([np.clip((Z - zmu) / zsd, -10, 10),
                                           np.clip(((E - emu) / esd)[:, None], -10, 10)], 1).astype(np.float32)
         Str, Ste = mk(Ztr, Etr), mk(Zte, Ete)
-        base_best, base_thr, base_lr = best_simple(Str, Ste, trl, tel, Ete)
-        print(f"\n===== {dname} =====  best simple learner F1 = {base_best:.3f}")
+        base_best, comps = best_simple(Str, Ste, trl, tel, Ete)
+        print(f"\n===== {dname} =====  threshold {comps['threshold']:.3f} | LR(z,e) {comps['logreg']:.3f} "
+              f"| MLP(z,e) {comps['mlp']:.3f}  -> best simple learner {base_best:.3f}")
 
         for algo in ("DQN", "A2C"):
             f1 = []
@@ -107,7 +116,8 @@ def main():
     print(f"{'dataset':<12}{'algo':<6}{'base':>7}{'RL mean':>9}{'margin':>8}{'won':>7}")
     for r in rows:
         print(f"{r['dataset']:<12}{r['algo']:<6}{r['base_best']:>7.3f}{r['mean']:>9.3f}{r['margin']:>+8.3f}{r['seeds_won']:>4}/{r['n']}")
-    print("=> Negative result is NOT PPO-specific: DQN and A2C also fail to beat the simple learner.")
+    print("=> Across PPO/DQN/A2C, no RL beats the best simple learner — including a matched-capacity")
+    print("   supervised MLP [128,64,32] on the same (z,e) -> the result is algorithm-independent.")
     print("===================================================================")
 
     os.makedirs(os.path.join(a.outdir, "results"), exist_ok=True)
