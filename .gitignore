@@ -1,22 +1,16 @@
-# Sensitive / unpublished — NEVER commit
-# (competitor papers, your unpublished paper, private logs, strategy docs)
+# Local-only working notes (not part of the released code)
+*.md
+!README.md
+!EXPERIMENTS_README.md
+experment.txt
+
+# Large binaries / data (live in Google Drive, not git)
 *.pdf
 *.docx
-experment.txt
-CLAUDE.md
-PROJECT_OVERVIEW.md
-RESEARCH_PLAN.md
-PAPER_VS_CODE_GAP.md
-RESULTS_SUMMARY.md
-PROJECT_REPORT.md
-PAPER_UPDATE_BRIEF.md
-RESULTS_FOR_PAPER.md
-
-# Data — large, lives in Google Drive, not git
 *.csv
 *.zip
 
-# Notebooks with embedded outputs — large/binary
+# Notebooks with embedded outputs
 *.ipynb
 
 # Generated experiment outputs
