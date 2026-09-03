@@ -1,11 +1,15 @@
 """
 Experiment 2 — Per-seed variance + 95% CI for the static RL detector (Protocol #2/#3)  ⭐
 The backbone rigor result: PPO tier-controller vs the F1-OPTIMAL threshold, across 15 seeds,
-on NSL-KDD AND UNSW-NB15, with mean±std, 95% CI, Wilcoxon/t-test, Cohen's d, seeds-won.
+on NSL-KDD AND UNSW-NB15 (and CIC-IoT2023 when its CSVs are supplied), with mean±std, 95% CI,
+Wilcoxon/t-test, Cohen's d, seeds-won.
 Deterministic frozen autoencoder (CPU) so the only randomness is the RL seed.
 
 Produces Table A (static-detection rows). RUN (Colab):
   !python exp2_static_seeds.py --epochs 40 --timesteps 80000
+  # optional third dataset (CSVs built by ciciot2023_pipeline.py):
+  !python exp2_static_seeds.py --epochs 40 --timesteps 80000 \
+      --ciciot-train .../CICIoT2023_Train.csv --ciciot-test .../CICIoT2023_Test.csv
 Outputs: results/exp2_static_seeds.csv
 """
 import argparse, importlib, json, os, subprocess, sys
@@ -79,6 +83,9 @@ def main():
     ap.add_argument("--nsl-test", default="/content/drive/MyDrive/dataset/Test_data.csv")
     ap.add_argument("--unsw-train", default="/content/drive/MyDrive/dataset/UNSW_NB15_training-set.parquet")
     ap.add_argument("--unsw-test", default="/content/drive/MyDrive/dataset/UNSW_NB15_testing-set.parquet")
+    # Optional third dataset. Omit both flags and this script behaves exactly as before.
+    ap.add_argument("--ciciot-train", default=None, help="CICIoT2023_Train.csv (ciciot2023_pipeline.py)")
+    ap.add_argument("--ciciot-test", default=None, help="CICIoT2023_Test.csv (ciciot2023_pipeline.py)")
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--timesteps", type=int, default=80000)
     ap.add_argument("--n-seeds", type=int, default=15)
@@ -90,6 +97,10 @@ def main():
         "NSL-KDD":   (lambda: (p1.load_csv(a.nsl_train), p1.load_csv(a.nsl_test)), p1.build_preprocessor),
         "UNSW-NB15": (lambda: (p8.load_unsw(a.unsw_train), p8.load_unsw(a.unsw_test)), p8.build_preprocessor),
     }
+    if a.ciciot_train and a.ciciot_test:
+        # Same loader/preprocessor as NSL-KDD: converted CSVs are 46 numeric features + `class`.
+        DS["CIC-IoT2023"] = (lambda: (p1.load_csv(a.ciciot_train), p1.load_csv(a.ciciot_test)),
+                             p1.build_preprocessor)
     rows = []
     for name, (load, pre) in DS.items():
         print(f"\n===== {name} ({len(seeds)} seeds) =====")
