@@ -1,7 +1,10 @@
 # Pinned-ish environment for reproducing the RL-IDS experiments (Protocol #8).
 # Colab already provides most of these; versions are floors known to work.
 numpy>=1.26
-pandas>=2.0
+# Upper bound is load-bearing: pandas 3.x reads the NSL-KDD categorical columns
+# (protocol_type, service, flag) as StringDtype rather than object, so the dtype check in
+# build_preprocessor misses them and StandardScaler then crashes on values like 'tcp'.
+pandas>=2.0,<3
 pyarrow>=14.0
 scipy>=1.11
 scikit-learn>=1.3
@@ -10,3 +13,4 @@ matplotlib>=3.7
 torch>=2.2
 stable-baselines3>=2.3
 gymnasium>=0.29
+huggingface_hub>=0.23    # ciciot2023_pipeline.py fetches CIC-IoT2023 from the Hub

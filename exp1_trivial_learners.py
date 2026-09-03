@@ -3,10 +3,14 @@ Experiment 1 — Trivial-learner battery (Protocol #1)  ⭐ the cheapest, most p
 Shows a 1-2 parameter learner on the single reconstruction-error feature e(x) matches the tuned
 threshold and equals/beats PPO (~10^4 params) -> empirical proof of "threshold-reducibility".
 
-Produces Table B (NSL-KDD + UNSW-NB15). Deterministic autoencoder (CPU, fixed seed).
+Produces Table B (NSL-KDD + UNSW-NB15, and CIC-IoT2023 when its CSVs are supplied).
+Deterministic autoencoder (CPU, fixed seed).
 
 RUN (Colab):
   !python exp1_trivial_learners.py --epochs 40
+  # optional third dataset (CSVs built by ciciot2023_pipeline.py):
+  !python exp1_trivial_learners.py --epochs 40 \
+      --ciciot-train .../CICIoT2023_Train.csv --ciciot-test .../CICIoT2023_Test.csv
 Outputs: results/exp1_trivial.csv  (+ printed Table B)
 """
 import argparse, importlib, json, os, subprocess, sys
@@ -60,6 +64,9 @@ def main():
     ap.add_argument("--nsl-test", default="/content/drive/MyDrive/dataset/Test_data.csv")
     ap.add_argument("--unsw-train", default="/content/drive/MyDrive/dataset/UNSW_NB15_training-set.parquet")
     ap.add_argument("--unsw-test", default="/content/drive/MyDrive/dataset/UNSW_NB15_testing-set.parquet")
+    # Optional third dataset. Omit both flags and this script behaves exactly as before.
+    ap.add_argument("--ciciot-train", default=None, help="CICIoT2023_Train.csv (ciciot2023_pipeline.py)")
+    ap.add_argument("--ciciot-test", default=None, help="CICIoT2023_Test.csv (ciciot2023_pipeline.py)")
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--outdir", default=os.path.dirname(os.path.abspath(__file__)))
     a = ap.parse_args()
@@ -74,6 +81,12 @@ def main():
         "UNSW-NB15": dict(load=lambda: (p8.load_unsw(a.unsw_train), p8.load_unsw(a.unsw_test)),
                           pre=p8.build_preprocessor, ppo_f1=0.789),
     }
+    if a.ciciot_train and a.ciciot_test:
+        # Same loader/preprocessor as NSL-KDD: the converted CSVs are 46 numeric features + `class`.
+        # No PPO reference row — DQN/A2C/PPO Table-B references were only run on NSL/UNSW.
+        DATASETS["CIC-IoT2023"] = dict(
+            load=lambda: (p1.load_csv(a.ciciot_train), p1.load_csv(a.ciciot_test)),
+            pre=p1.build_preprocessor, ppo_f1=None)
 
     rows = []
     for name, cfg in DATASETS.items():
@@ -96,8 +109,9 @@ def main():
         for rule, m in res.items():
             print(f"  {rule:<38}{m['F1']:>7.3f}{m['ROC_AUC']:>7.3f}{m['PR_AUC']:>7.3f}{m['accuracy']:>7.3f}")
             rows.append(dict(dataset=name, rule=rule, **m))
-        print(f"  {'PPO (latent z + e, ~10^4 params)':<38}{cfg['ppo_f1']:>7.3f}{'—':>7}{'—':>7}{'—':>7}")
-        rows.append(dict(dataset=name, rule="PPO (latent z + e)", F1=cfg["ppo_f1"]))
+        if cfg["ppo_f1"] is not None:
+            print(f"  {'PPO (latent z + e, ~10^4 params)':<38}{cfg['ppo_f1']:>7.3f}{'—':>7}{'—':>7}{'—':>7}")
+            rows.append(dict(dataset=name, rule="PPO (latent z + e)", F1=cfg["ppo_f1"]))
 
     os.makedirs(os.path.join(a.outdir, "results"), exist_ok=True)
     import csv
