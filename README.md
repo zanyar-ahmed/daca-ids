@@ -44,6 +44,35 @@ shape the existing phase-1 loader already reads, then runs `phase1_autoencoder_i
 | `exp2_static_seeds.py --ciciot-train/--ciciot-test` | adds the CIC-IoT2023 rows to Table A (same) |
 | `stronger_baselines.py` | IsolationForest / OneClassSVM(RBF) vs the AE score on all three datasets |
 
+## Revision scripts (IEEE Access revision)
+These four scripts and one output file back the sections added in revision. Each reuses the
+phase scripts unmodified, so the NSL-KDD, UNSW-NB15 and CIC-IoT2023 numbers already in the
+paper do not move.
+
+| Script | Backs | Paper location |
+|---|---|---|
+| `rev_threshold_protocol.py` | validation-selected threshold protocol + operational metrics | Section V-L, Table XXI |
+| `rev_convergence.py` | training budget and convergence at 300k timesteps | Section V-M, Table XXII, Fig. 13 |
+| `rev_adversary_strategies.py` | three further adversary strategies + two extreme cost ratios | Section VI-B, Table XXVII, Fig. 16 |
+| `measure_rl_training_time.py` | wall-clock cost of training the policy | Table XX, rows marked (CPU) |
+| `rl_training_time.json` | the measured output of the script above | Table XX |
+
+`reproduce.sh` runs all four at the seed counts the paper reports: ten seeds for Sections V-L
+and V-M, six for Section VI-B. `measure_rl_training_time.py` writes `rl_training_time.json`;
+the committed copy was measured on a ten-core Apple-silicon CPU, and re-running it on other
+hardware gives different absolute seconds — which is why the paper marks those rows `(CPU)`.
+
+### Which script implements the autonomous-response environment
+The environment specified in Section IV and Table VII — 50 steps, a campaign present with
+probability 0.5 starting in the first half of the episode, a five-dimensional observation with
+the compromise level hidden, monitor / throttle / block, and an adversary that mimics normal
+traffic for three steps after any response — is implemented by `AdaptiveSim` in
+`exp5_adaptive_adversary.py`, which `rev_adversary_strategies.py` subclasses for the Section
+VI-B variants. The published autonomous-response result comes from that file.
+`phase6_response.py` is the earlier version of the same game and is kept for provenance: it has
+no reacting adversary, and it shows the compromise level to the agent as part of a
+six-dimensional observation.
+
 ### Run on Google Colab (GPU) — private repo
 1. Create a GitHub token: GitHub → Settings → Developer settings → **Fine-grained tokens** →
    give it *read-only* access to the `daca-ids` repo.

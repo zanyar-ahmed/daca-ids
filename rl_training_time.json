@@ -1,0 +1,26 @@
+{
+ "hardware": {
+  "platform": "macOS-26.5.1-arm64-arm-64bit",
+  "processor": "arm",
+  "cpu_count": 10,
+  "device": "cpu",
+  "cuda_available": false,
+  "torch": "2.12.1"
+ },
+ "seed": 42,
+ "ae_epochs": 100,
+ "ae_train_seconds": 73.7,
+ "episode_len": 2048,
+ "ppo": {
+  "80000": {
+   "train_seconds": 23.2,
+   "seconds_per_1k_timesteps": 0.29,
+   "ratio_to_ae_training": 0.32
+  },
+  "300000": {
+   "train_seconds": 85.5,
+   "seconds_per_1k_timesteps": 0.285,
+   "ratio_to_ae_training": 1.16
+  }
+ }
+}

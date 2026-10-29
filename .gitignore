@@ -2,6 +2,7 @@
 *.md
 !README.md
 !EXPERIMENTS_README.md
+!repo_verification_r2.md
 experment.txt
 
 # Large binaries / data (live in Google Drive, not git)
