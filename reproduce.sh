@@ -48,4 +48,21 @@ python stronger_baselines.py --nsl-train "$NSL_TR" --nsl-test "$NSL_TE" \
        --unsw-train "$UN_TR" --unsw-test "$UN_TE" \
        --ciciot-train "$CIC_TR" --ciciot-test "$CIC_TE" --epochs 40
 
+echo "== R2.3 + R2.9: validation-selected threshold protocol + operational metrics (Section V-L) =="
+python rev_threshold_protocol.py --nsl-train "$NSL_TR" --nsl-test "$NSL_TE" \
+       --unsw-train "$UN_TR" --unsw-test "$UN_TE" \
+       --ciciot-train "$CIC_TR" --ciciot-test "$CIC_TE" --epochs 40 --rl-seeds 10
+
+echo "== R2.7: training budget and convergence, 300k timesteps (Section V-M) =="
+python rev_convergence.py --nsl-train "$NSL_TR" --nsl-test "$NSL_TE" \
+       --unsw-train "$UN_TR" --unsw-test "$UN_TE" \
+       --ciciot-train "$CIC_TR" --ciciot-test "$CIC_TE" \
+       --epochs 40 --timesteps 300000 --seeds 10
+
+echo "== R2.5: three further adversary strategies + extreme cost ratios (Section VI-B) =="
+python rev_adversary_strategies.py --train "$NSL_TR" --ae-epochs 40 --seeds 6 --timesteps 100000
+
+echo "== R1.3: wall-clock cost of training the policy (Table XX, rows marked (CPU)) =="
+python measure_rl_training_time.py --train "$NSL_TR" --test "$NSL_TE"
+
 echo "All experiments done. Results in ./results/ ; figures saved next to each script."
