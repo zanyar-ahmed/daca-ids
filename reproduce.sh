@@ -65,4 +65,7 @@ python rev_adversary_strategies.py --train "$NSL_TR" --ae-epochs 40 --seeds 6 --
 echo "== R1.3: wall-clock cost of training the policy (Table XX, rows marked (CPU)) =="
 python measure_rl_training_time.py --train "$NSL_TR" --test "$NSL_TE"
 
+echo "== Section V-K: runtime, latency and memory footprint (Table XX, rows not marked (CPU)) =="
+python exp5_runtime.py --train "$NSL_TR"
+
 echo "All experiments done. Results in ./results/ ; figures saved next to each script."
