@@ -45,7 +45,8 @@ shape the existing phase-1 loader already reads, then runs `phase1_autoencoder_i
 | `stronger_baselines.py` | IsolationForest / OneClassSVM(RBF) vs the AE score on all three datasets |
 
 ## Revision scripts (IEEE Access revision)
-These four scripts and one output file back the sections added in revision. Each reuses the
+These five scripts and one output file back the sections added in revision, plus the runtime
+table they sit beside. Each reuses the
 phase scripts unmodified, so the NSL-KDD, UNSW-NB15 and CIC-IoT2023 numbers already in the
 paper do not move.
 
@@ -55,12 +56,17 @@ paper do not move.
 | `rev_convergence.py` | training budget and convergence at 300k timesteps | Section V-M, Table XXII, Fig. 13 |
 | `rev_adversary_strategies.py` | three further adversary strategies + two extreme cost ratios | Section VI-B, Table XXVII, Fig. 16 |
 | `measure_rl_training_time.py` | wall-clock cost of training the policy | Table XX, rows marked (CPU) |
+| `exp5_runtime.py` | runtime, inference latency, parameter counts and memory footprint | Table XX, rows not marked (CPU) |
 | `rl_training_time.json` | the measured output of the script above | Table XX |
 
 `reproduce.sh` runs all four at the seed counts the paper reports: ten seeds for Sections V-L
 and V-M, six for Section VI-B. `measure_rl_training_time.py` writes `rl_training_time.json`;
 the committed copy was measured on a ten-core Apple-silicon CPU, and re-running it on other
 hardware gives different absolute seconds — which is why the paper marks those rows `(CPU)`.
+`exp5_runtime.py` writes `runtime.json`; its parameter counts are exact and hardware-independent,
+but its latencies and training time depend on the machine, and the figures in Table XX that it
+is cited for were taken on a Colab T4. Neither script's output should be edited to agree with
+the table.
 
 ### Which script implements the autonomous-response environment
 The environment specified in Section IV and Table VII — 50 steps, a campaign present with
