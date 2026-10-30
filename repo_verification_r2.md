@@ -7,8 +7,13 @@ are recorded below and the decision is left to the author.
 
 Environment: macOS 26.5.1, arm64, 10-core Apple silicon, CPU only (no CUDA),
 Python 3.11.15, torch 2.12.1, stable-baselines3 2.9.0, pandas 2.2.3, pyarrow present.
-NSL-KDD and UNSW-NB15 read from local copies of the public benchmarks; CIC-IoT2023 not fetched
-in this session.
+NSL-KDD and UNSW-NB15 read from local copies of the public benchmarks; CIC-IoT2023 fetched by
+`ciciot2023_pipeline.py` during the full run recorded in Section 7.
+
+**Update, 30 October 2026.** `reproduce.sh` has since been run end to end from a clean clone of
+`main`, all fourteen stages, and the published tables of Sections V-L, V-M and VI-B reproduced.
+Section 7 records the run and Section 9 the comparison. Discrepancies D1 and D2 are both
+resolved; neither remains open.
 
 ## 1. Files published by this change
 
@@ -27,13 +32,14 @@ exactly and the measurement itself is unchanged. No phase, exp or pipeline scrip
 
 ## 2. R1.2 (a) — the autonomous-response environment
 
-**The specification in Section IV and Table VII is implemented in full — but by
-`exp5_adaptive_adversary.py`, not by `phase6_response.py`.** `AdaptiveSim` in
+**The specification in Section IV and Table VII is implemented in full, by
+`exp5_adaptive_adversary.py`.** `AdaptiveSim` in
 `exp5_adaptive_adversary.py` satisfies every clause, including the two that
 `phase6_response.py` contradicts. `rev_adversary_strategies.py` subclasses `AdaptiveSim`, so the
-Section VI-B variants inherit the specified environment. The manuscript names no script for
-Section IV, and Table VI labels the row "(Phase 6)", which points a reviewer at the one file
-that does not match.
+Section VI-B variants inherit the specified environment. `phase6_response.py` is the earlier
+static variant and differs on two points; the manuscript now states that difference itself
+(see D1), so the table below records which file satisfies each clause rather than reporting a
+mismatch.
 
 | Paper claim (Section IV / Table VII) | `exp5_adaptive_adversary.py` | `phase6_response.py` |
 |---|---|---|
@@ -42,14 +48,14 @@ that does not match.
 | Onset drawn uniformly from the first half | verified — `rng.integers(0, max(1, s.T // 2))` (L43) | verified — same expression (L82) |
 | Hidden campaign state never revealed | verified — `attack`/`start` absent from `_obs` (L62–67) | verified — absent from `_obs` (L59–62) |
 | One standardized anomaly score per step, from the attack-error pool while the campaign runs and the normal pool otherwise | verified — `_err` (L53–60); pools standardized on normal mean/sd (L173–175) | verified — `_err` (L56–57); pools (L156–158) |
-| Five-dimensional observation: current score, mean and max of last five, previous action, normalized elapsed time | verified — exactly `[cur, h.mean(), h.max(), s.resp/2.0, s.t/s.T]` (L67), `maxlen=5` (L47), `Box(…,(5,))` (L94) | **discrepancy — six dimensions** `[s.cur, h.mean(), h.max(), s.comp, s.resp/2.0, s.t/s.T]` (L61), `Box(…,(6,))` (L100) |
-| Compromise level withheld from the agent | verified — explicit in code comment (L63–64); `s.comp` absent from `_obs` | **discrepancy — compromise is observation element 3** (L61) |
+| Five-dimensional observation: current score, mean and max of last five, previous action, normalized elapsed time | verified — exactly `[cur, h.mean(), h.max(), s.resp/2.0, s.t/s.T]` (L67), `maxlen=5` (L47), `Box(…,(5,))` (L94) | differs by design — **six** dimensions, `[s.cur, h.mean(), h.max(), s.comp, s.resp/2.0, s.t/s.T]` (L61), `Box(…,(6,))` (L100); recorded in Table VI |
+| Compromise level withheld from the agent | verified — explicit in code comment (L63–64); `s.comp` absent from `_obs` | differs by design — compromise is observation element 3 (L61); recorded in Table VI |
 | Actions monitor / throttle / block | verified — `Discrete(3)` (L93), `AVAIL`/`INC` (L28–29) | verified — `Discrete(3)` (L99), `costs`/`incs` (L43) |
 | Availability cost 0.00 / 0.05 / 0.20 | verified — `AVAIL` (L28) | verified — `costs=(0.0, 0.05, 0.20)` (L43) |
 | Compromise increment 0.15 / 0.05 / 0.00 while active | verified — `INC` (L29) | verified — `incs=(0.15, 0.05, 0.0)` (L43) |
 | Breach weight 5.0 × cost ratio per unit compromise | verified — `s.Wc = 5.0 * cost_ratio` (L38) | partial — `Wc=5.0` fixed, no cost-ratio parameter (L42) |
 | Breach penalty 10.0 × cost ratio, charged once when compromise first reaches 1.0 | verified — `s.bp = 10.0 * cost_ratio` (L38); charged once via `and not s.breached` (L74–75) | partial — `breach_pen=10.0` fixed (L42); also ends the episode, `done = True` (L72), which Table VII does not state |
-| Adversary reaction: 3-step cooldown in which the campaign mimics normal traffic with probability eps | verified — `COOLDOWN = 3` (L30), `s.cool > 0 and s.evcoin[s.t] < s.eps` (L57), `s.cool = COOLDOWN` (L78) | **discrepancy — absent**; no evasion, cooldown or eps anywhere in the file |
+| Adversary reaction: 3-step cooldown in which the campaign mimics normal traffic with probability eps | verified — `COOLDOWN = 3` (L30), `s.cool > 0 and s.evcoin[s.t] < s.eps` (L57), `s.cool = COOLDOWN` (L78) | differs by design — absent; no evasion, cooldown or eps in the file; recorded in Table VI |
 | Reward = negative total cost (availability + compromise + breach) | verified — `r = -AVAIL[a] - inc * s.Wc` (L73), `r -= s.bp` (L75) | verified — `reward = -cost - inc * s.Wc` (L69), `reward -= s.bp` (L72) |
 
 ## 3. R1.2 (b) — Table VI reward functions
@@ -92,19 +98,30 @@ escalating-evasion variant (`eps=0.25`, L211) and the eps of the two cost-ratio 
 cost sweep). Neither is contradicted — they are simply unstated, so a reviewer cannot check them
 against the paper without reading the script.
 
-## 5. Discrepancies for the author to decide
+## 5. Discrepancies raised by this check (D1 and D2 now resolved)
 
-None of these were changed in either the code or the manuscript.
+None of these were changed by this check in either the code or the manuscript. D1 and
+D2 have since been resolved — D1 by the author in the manuscript, D2 by releasing the script.
 
-**D1 — Table VI labels the autonomous-response row "(Phase 6)", but the Table VII specification
-it refers to is implemented by `exp5_adaptive_adversary.py`.** `phase6_response.py` differs on
-three counts: a six-dimensional observation rather than five, the compromise level visible to
-the agent rather than withheld, and no reacting adversary at all. A reviewer following the
-"Phase 6" label to `phase6_response.py` in answer to R1.2 will find a file that contradicts the
-specification on exactly the two points R1.2 asked about (what the agent observes, and how the
-adversary behaves). The published result is `exp5`'s. The README added in this change states
-which file implements the specification, which addresses the repository side; the Table VI row
-label is the author's to resolve.
+**D1 — the "(Phase 6)" label on the autonomous-response row. Now resolved by the author.**
+When this log was first written, Table VI labelled that row "(Phase 6)" while the Table VII
+specification it cited — five-dimensional observation, compromise hidden, reacting adversary —
+is implemented by `exp5_adaptive_adversary.py`, not `phase6_response.py`. A reviewer following
+the label in answer to R1.2 would have landed on the one file contradicting the specification on
+exactly the two points R1.2 asked about.
+
+The manuscript now distinguishes the two variants explicitly, which removes the ambiguity
+without changing any result. Verified against the current revision:
+
+* the row reads "Autonomous response (Phase 6; adaptive extension, Section VI-B)";
+* its assumption column states that "Phase 6 exposes the compromise level to the agent and faces
+  a non-reacting adversary; the adaptive extension hides it and adds a reacting adversary";
+* Section IV opens by saying "The specification is that of the adaptive-adversary environment of
+  Section VI-B, in which the positive result is obtained; the static Phase 6 variant differs in
+  the two respects recorded in Table VI".
+
+Both files are released, both behaviours are now described, and the mapping in Section 2 above
+tells a reviewer which clause each file satisfies. Nothing further is outstanding here.
 
 **D2 — `exp5_runtime.py` was named in the repository but did not exist in it. Now resolved.**
 Section V-K says the runtime figures were measured by "script `exp5_runtime.py` in the
@@ -167,54 +184,108 @@ exactly and the 80,000-step ratio to within 0.02. Absolute seconds run about 9% 
 in the committed JSON, which is the expected machine-load variation on nominally identical
 hardware and is why the paper marks these rows (CPU). No value was edited to agree.
 
-## 7. Execution checks
+## 7. Execution checks — full end-to-end run
 
-Each script was run before being committed. The two multi-seed experiments were run at reduced
-epoch, seed and timestep budgets — enough to exercise every code path end to end, not enough to
-reproduce the published tables. Full reproduction was not attempted in this session; the
-estimated cost is noted below.
+`reproduce.sh` was run to completion from a **clean clone of `main`**, with `DATASET_DIR`
+holding the public NSL-KDD and UNSW-NB15 files; CIC-IoT2023 was fetched by the pipeline during
+the run. All fourteen stages executed and the script printed its completion line.
 
-| Script | Command run | Result |
+| | |
+|---|---|
+| Started / finished | 29 Oct 2026 18:52:30 — 30 Oct 2026 09:48:25 |
+| Stages completed | **14 of 14** |
+| Exit status | **0**, `All experiments done` printed |
+| Tracebacks, import errors, OOM kills | **none** |
+| Result files written | 13, under `results/` |
+
+Every script reached by the entry point ran: `phase1_autoencoder_ids.py`, `exp1_trivial_learners.py`,
+`exp2_static_seeds.py`, `exp4_hparam_sweep.py`, `exp5_adaptive_adversary.py`, `phase8_unsw.py`,
+`ciciot2023_pipeline.py`, `stronger_baselines.py`, and all five files released by this change.
+
+A note on wall-clock figures from this run. The machine idle-slept for much of the first night,
+which suspends the process without failing it: at one point 8 h 12 m of elapsed time had
+consumed only 11 m 22 s of CPU. Elapsed-time figures from that period are therefore not compute
+measurements. This affects the `secs` column of `results/stronger_baselines.csv`, which records
+wall clock: One-Class SVM logged 8,265 s on NSL-KDD and 20,855 s on UNSW-NB15 against 312 s and
+624 s in the earlier log, while CIC-IoT2023 — fitted after the machine was held awake — took
+516 s against the earlier 12,254 s. The F1, ROC-AUC and PR values are unaffected and reproduce
+exactly. **The `secs` columns in both this log and `repo_verification.md` should be read as
+wall clock on a laptop that may have slept, not as cost measurements.**
+
+## 8. Reproduction of the published tables
+
+The run regenerated the tables rather than merely executing the code. Threshold and baseline
+figures are deterministic and match exactly; reinforcement-learning figures are means over
+stochastic seeds and match within seed noise.
+
+**Static detection (Table A, 15 seeds).** Margin of RL over the best simple learner:
+
+| dataset | reproduced | published |
 |---|---|---|
-| `measure_rl_training_time.py` | full published configuration (100 AE epochs, 80k and 300k budgets, seed 42) | **PASS** — completed, wrote valid JSON, figures in Section 6 |
-| `rev_threshold_protocol.py` | `--epochs 3 --rl-seeds 1 --rl-timesteps 4096`, NSL-KDD + UNSW-NB15 | **PASS** — all four comparators plus the five-point prevalence sweep written to `results/rev_threshold_protocol.csv`; CIC-IoT2023 absent and correctly reported as "inputs missing -> skipped" |
-| `rev_convergence.py` | `--epochs 3 --timesteps 20000 --seeds 1`, NSL-KDD + UNSW-NB15 | **PASS** — checkpoint probe fired at both 10,000 and 20,000 timesteps on both datasets, full operating point logged per checkpoint to `results/rev_convergence.csv`, tuned-threshold and logistic-regression baselines computed; CIC-IoT2023 correctly skipped |
-| `rev_adversary_strategies.py` | `--ae-epochs 3 --seeds 1 --timesteps 4096 --eval-episodes 150`, NSL-KDD | **PASS** — all six variants (four adversary strategies, two cost ratios) trained, evaluated and written to `results/rev_adversary_strategies.csv`, with the delay and censoring columns populated; see the 1-seed caveat below |
-| `exp5_runtime.py` | full default configuration (30 AE epochs, 2,000 reps, seed 42), NSL-KDD | **PASS** — completed, wrote valid JSON; parameter counts reproduce Table XX exactly (see D2) |
+| NSL-KDD | −0.160 | −0.160 |
+| UNSW-NB15 | −0.011 | −0.011 |
+| CIC-IoT2023 | −0.006 | −0.0059 |
 
-Caveat on the `rev_adversary_strategies.py` check: it was run with one seed, which makes the
-variance-based statistics degenerate by construction — scipy and numpy emit
-`Degrees of freedom <= 0` and `invalid value` warnings, the confidence interval collapses onto the
-point estimate, and one variant reports `rl_delay = nan` because at 4,096 timesteps the policy
-never responded in any attack episode, so every episode was censored. These are artefacts of the
-reduced budget, not defects: the script's own default is six seeds (L182) and the paper's budget
-is 100,000 timesteps, roughly 24 times what was used here. The smoke-run margins therefore do not
-resemble Table XXVII and are not offered as a reproduction of it — two variants even invert
-(scheduled dormancy loses here, wins in the paper), which is what a 4% training budget should be
-expected to do.
+**Stronger unsupervised baselines — 9 of 9 rows exact** (F1): NSL-KDD 0.9347 / 0.8850 / 0.8721,
+UNSW-NB15 0.7804 / 0.7614 / 0.7315, CIC-IoT2023 0.9415 / 0.9328 / 0.9242.
 
-At the smoke-test budget `rev_threshold_protocol.py` already shows the qualitative pattern
-Section V-L reports: on UNSW-NB15 the PPO controller's F1 (0.7588) sits beside the
-validation-selected threshold's (0.7643) while running at a materially worse false-positive rate
-(0.698 against 0.572) and issuing more alerts per thousand flows (842 against 756) — the paper's
-"buys F1 with false positives" finding. These are 3-epoch numbers and are not the published
-values.
+**Section V-L, validation-selected threshold protocol (R2.3), 10 RL seeds, three datasets.**
+Every threshold figure exact to four decimals:
 
-## 8. What the repository still cannot reproduce
+| dataset | comparator | reproduced | manuscript |
+|---|---|---|---|
+| NSL-KDD | validation-selected | 0.8715 | 0.8715 |
+| NSL-KDD | PPO controller | 0.7691 | 0.7703 |
+| UNSW-NB15 | validation-selected | 0.7787 | 0.7787 |
+| UNSW-NB15 | PPO controller | 0.7879 | 0.7882 |
+| CIC-IoT2023 | validation-selected | 0.9383 | 0.9383 |
+| CIC-IoT2023 | PPO controller | 0.9351 | 0.9347 |
 
-1. **The Colab-T4 absolute figures of Table XX cannot be reproduced without a T4.** The script
-   is now released (`exp5_runtime.py`, D2) and its hardware-independent quantities — the two
-   parameter counts — reproduce exactly, but the latencies, training time and peak RAM in those
-   rows are machine-dependent and will differ on any other hardware. Every row of Table XX now
-   has a released script behind it.
-2. **CIC-IoT2023 results were not re-run in this session.** `ciciot2023_pipeline.py` fetches the
-   dataset from the Hugging Face Hub and was not exercised here; the three scripts that take
-   `--ciciot-*` flags were verified to skip cleanly when the files are absent, not to run on
-   them. The existing log in `repo_verification.md` records a prior exact reproduction of that
-   pipeline.
-3. **The published tables of Sections V-L, V-M and VI-B were not reproduced**, only executed.
-   Full runs are expensive on CPU: Section V-M alone is 3 datasets × 10 seeds × 300,000
-   timesteps, which at the 0.26 s per 1,000 timesteps measured in Section 6 is roughly 6.5 hours
-   of policy training before the autoencoder fits and the per-checkpoint test inference. Section
-   V-L adds 30 PPO trainings at 80,000 steps and Section VI-B 36 at 100,000.
-4. **The figures** are produced by `build_paper_figures.py`, which was not run here.
+The oracle-to-validation gap on CIC-IoT2023 reproduces at 0.0001 (0.9384 against 0.9383), the
+figure Section V-L quotes, and on NSL-KDD the label-free percentile rule (0.9249) again beats
+the validation-selected cut-point (0.8715).
+
+**Section V-M, training budget and convergence (R2.7), 10 seeds, three datasets.**
+
+| dataset | checkpoint | reproduced | manuscript |
+|---|---|---|---|
+| NSL-KDD | 80,000 | 0.7784 | 0.7783 |
+| NSL-KDD | 300,000 | 0.7725 | 0.7671 |
+| UNSW-NB15 | crossing point | 150,000 | 150,000 |
+| UNSW-NB15 | margin at 300,000 | +0.0187 | +0.0185 |
+| CIC-IoT2023 | margin at 80,000 | −0.0060 | −0.0059 |
+| CIC-IoT2023 | margin at 300,000 | −0.0002 | −0.0002 |
+
+The UNSW-NB15 reversal — the finding that corrects the original submission — reproduces on both
+its crossing point and its final margin. NSL-KDD drifts downward with budget as reported,
+though its 300,000-step endpoint is 0.0054 above the manuscript's.
+
+**Section VI-B, adversary strategies (R2.5), 6 seeds, 6 variants. All six verdicts reproduce:**
+
+| variant | reproduced margin | manuscript | verdict |
+|---|---|---|---|
+| reactive evasion | +0.906 | +0.865 | RL wins ✓ |
+| scheduled dormancy | +0.474 | +0.475 | RL wins ✓ |
+| probe then strike | −0.357 | −0.258 | RL loses ✓ |
+| escalating evasion | +4.022 | +3.864 | RL wins ✓ |
+| cost ratio 0.125 | +0.190 | +0.217 | RL wins ✓ |
+| cost ratio 8.0 | +0.013 | −0.031 | tie ✓ |
+
+The manuscript's summary — the advantage survives three of four adversary models and one of two
+extreme cost structures — holds on every variant.
+
+**Table XX parameter counts** reproduce exactly again in the full run: 34,618 autoencoder
+parameters and 25,478 PPO policy parameters.
+
+## 9. What the repository still cannot reproduce
+
+1. **The Colab-T4 absolute figures of Table XX.** The script is released (`exp5_runtime.py`) and
+   its hardware-independent quantities reproduce exactly, but the latencies, training time and
+   peak RAM in those rows were taken on a T4 and will differ on any other hardware.
+2. **The policy-training ratios of Table XX vary between runs on the same machine.** The
+   standalone measurement gave 0.30 and 1.16 against the manuscript's 0.32 and 1.16; the
+   measurement taken inside the full run gave 0.38 and 1.35, because the autoencoder fit was
+   faster that time (56.8 s against 73.7 s) while policy training was not. The ratio is less
+   stable than a single measurement suggests, which is consistent with rows marked (CPU).
+3. **The figures.** `build_paper_figures.py` renders them from values transcribed out of the
+   manuscript and was not run here; it is a renderer, not an experiment.
