@@ -79,6 +79,49 @@ VI-B variants. The published autonomous-response result comes from that file.
 no reacting adversary, and it shows the compromise level to the agent as part of a
 six-dimensional observation.
 
+## CAGE Challenge 2 validation (Section VI-E)
+
+The autonomous-response result is repeated in **CAGE Challenge 2, Scenario 2**, built on CybORG
+and maintained independently of this work. Section VI-E and Table XXX report it.
+
+| Script | What it does | Writes |
+|---|---|---|
+| `cyborg_baselines.py` | the four Blue agents shipped with the challenge, a tuned scalar-threshold rule and a random policy, under the challenge's own protocol — 100 episodes, horizons 30/50/100, both supplied Red agents | `cyborg_baselines.json` |
+| `cyborg_ppo.py` | trains PPO (300,000 timesteps, 3 seeds, 30-step training episodes) and evaluates it under the same protocol | `cyborg_ppo.json` |
+| `cyborg_merge.py` | merges the two outputs above into the summary Table XXX is read from; `--check` verifies an existing summary instead of writing one | `cyborg_validation.json` |
+| `cyborg_validation.json` | that merged summary, committed as measured | — |
+
+### Prerequisite: CybORG is not installed by `requirements.txt`
+
+CybORG is not on PyPI and depends on the deprecated `gym` package, which pins an older Python
+than the rest of this code needs. It is therefore kept out of `requirements.txt` and installed
+separately, in its own environment:
+
+```bash
+git clone https://github.com/cage-challenge/cage-challenge-2.git
+python3.9 -m venv cage-env && source cage-env/bin/activate
+pip install -e cage-challenge-2/CybORG          # editable: a plain install omits version.txt
+pip install "stable-baselines3>=2.0,<3" gymnasium "numpy<2"
+
+python cyborg_baselines.py
+python cyborg_ppo.py --timesteps 300000 --seeds 3 --eval-eps 100
+python cyborg_merge.py                          # rebuilds cyborg_validation.json
+```
+
+Verified here on CybORG 2.1 (cage-challenge-2 `main`), Python 3.9, gym 0.26.2,
+stable-baselines3 2.7.1, numpy 1.26.4. `reproduce.sh` runs this stage only when `import CybORG`
+succeeds and skips it otherwise, so the rest of the script still runs end to end on a machine
+without CybORG.
+
+> **Reproducibility of this table.** CybORG seeds no episode of its own, so point values move
+> between runs: in an independent re-run here, 6 of 18 per-seed PPO rewards matched exactly and
+> the heuristic, do-nothing and threshold means moved by up to 43 reward — well inside the
+> per-setting standard deviations, which reach ±312. **Read Table XXX through its intervals,
+> not its point values.** Those are what reproduced: `BlueReactRestoreAgent` was again the best
+> shipped agent in all six settings, PPO's advantage was again significant on all three B_line
+> settings, and no setting again showed a significant deficit. `cyborg_merge.py` computes the
+> intervals, so the stability of a finding can be checked rather than assumed.
+
 ### Run on Google Colab (GPU) — private repo
 1. Create a GitHub token: GitHub → Settings → Developer settings → **Fine-grained tokens** →
    give it *read-only* access to the `daca-ids` repo.

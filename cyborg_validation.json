@@ -1,0 +1,181 @@
+{
+ "environment": "CAGE Challenge 2 (CybORG), Scenario2",
+ "protocol": {
+  "eval_episodes": 100,
+  "lengths": [
+   30,
+   50,
+   100
+  ],
+  "ppo_seeds": 3,
+  "ppo_timesteps": 300000,
+  "threshold_rule": "52-dim observation summed to a scalar; act when above a tuned cut-point"
+ },
+ "finding_A1": "The tuned scalar-threshold rule never exceeds the do-nothing policy and never differs from it by more than sampling error in any of the 6 settings; the largest gap, 7.95 against Meander at 100 steps, lies inside its 95% interval of +/-17.2. (A1) is measured to fail.",
+ "finding_RL": "PPO exceeds the best shipped heuristic with a 95% interval excluding zero in 3 of 6 settings (B_line at 30, 50, 100 steps); the 3 Meander settings are indistinguishable. No setting shows a deficit reaching significance.",
+ "rows": [
+  {
+   "red": "B_line",
+   "steps": 30,
+   "ppo_mean": -5.23,
+   "ppo_std": 0.81,
+   "ppo_seeds": [
+    -5.35,
+    -5.97,
+    -4.37
+   ],
+   "threshold": -221.31,
+   "sleep": -219.69,
+   "best_heuristic": "BlueReactRestoreAgent",
+   "best_heuristic_val": -37.95,
+   "ppo_minus_best_heuristic": 32.72,
+   "ppo_minus_threshold": 216.08,
+   "threshold_minus_sleep": -1.62,
+   "ppo_minus_best_heuristic_ci": [
+    11.68,
+    53.76
+   ],
+   "ppo_beats_best_heuristic_significantly": true,
+   "threshold_minus_sleep_ci": [
+    -5.59,
+    2.35
+   ]
+  },
+  {
+   "red": "B_line",
+   "steps": 50,
+   "ppo_mean": -10.15,
+   "ppo_std": 1.18,
+   "ppo_seeds": [
+    -9.69,
+    -11.49,
+    -9.26
+   ],
+   "threshold": -479.52,
+   "sleep": -480.37,
+   "best_heuristic": "BlueReactRestoreAgent",
+   "best_heuristic_val": -123.95,
+   "ppo_minus_best_heuristic": 113.8,
+   "ppo_minus_threshold": 469.37,
+   "threshold_minus_sleep": 0.85,
+   "ppo_minus_best_heuristic_ci": [
+    54.16,
+    173.44
+   ],
+   "ppo_beats_best_heuristic_significantly": true,
+   "threshold_minus_sleep_ci": [
+    -4.37,
+    6.07
+   ]
+  },
+  {
+   "red": "B_line",
+   "steps": 100,
+   "ppo_mean": -23.32,
+   "ppo_std": 1.29,
+   "ppo_seeds": [
+    -21.97,
+    -24.55,
+    -23.45
+   ],
+   "threshold": -1133.22,
+   "sleep": -1134.63,
+   "best_heuristic": "BlueReactRestoreAgent",
+   "best_heuristic_val": -526.13,
+   "ppo_minus_best_heuristic": 502.81,
+   "ppo_minus_threshold": 1109.9,
+   "threshold_minus_sleep": 1.41,
+   "ppo_minus_best_heuristic_ci": [
+    353.74,
+    651.87
+   ],
+   "ppo_beats_best_heuristic_significantly": true,
+   "threshold_minus_sleep_ci": [
+    -4.27,
+    7.09
+   ]
+  },
+  {
+   "red": "Meander",
+   "steps": 30,
+   "ppo_mean": -11.72,
+   "ppo_std": 0.59,
+   "ppo_seeds": [
+    -11.45,
+    -11.31,
+    -12.4
+   ],
+   "threshold": -44.61,
+   "sleep": -39.46,
+   "best_heuristic": "BlueReactRestoreAgent",
+   "best_heuristic_val": -13.4,
+   "ppo_minus_best_heuristic": 1.68,
+   "ppo_minus_threshold": 32.89,
+   "threshold_minus_sleep": -5.15,
+   "ppo_minus_best_heuristic_ci": [
+    -1.71,
+    5.07
+   ],
+   "ppo_beats_best_heuristic_significantly": false,
+   "threshold_minus_sleep_ci": [
+    -11.36,
+    1.06
+   ]
+  },
+  {
+   "red": "Meander",
+   "steps": 50,
+   "ppo_mean": -35.57,
+   "ppo_std": 7.47,
+   "ppo_seeds": [
+    -26.98,
+    -39.15,
+    -40.58
+   ],
+   "threshold": -278.2,
+   "sleep": -281.99,
+   "best_heuristic": "BlueReactRestoreAgent",
+   "best_heuristic_val": -39.25,
+   "ppo_minus_best_heuristic": 3.68,
+   "ppo_minus_threshold": 242.63,
+   "threshold_minus_sleep": 3.79,
+   "ppo_minus_best_heuristic_ci": [
+    -18.5,
+    25.86
+   ],
+   "ppo_beats_best_heuristic_significantly": false,
+   "threshold_minus_sleep_ci": [
+    -14.35,
+    21.93
+   ]
+  },
+  {
+   "red": "Meander",
+   "steps": 100,
+   "ppo_mean": -223.19,
+   "ppo_std": 95.87,
+   "ppo_seeds": [
+    -112.68,
+    -272.86,
+    -284.04
+   ],
+   "threshold": -985.73,
+   "sleep": -977.78,
+   "best_heuristic": "BlueReactRestoreAgent",
+   "best_heuristic_val": -210.2,
+   "ppo_minus_best_heuristic": -12.99,
+   "ppo_minus_threshold": 762.54,
+   "threshold_minus_sleep": -7.95,
+   "ppo_minus_best_heuristic_ci": [
+    -264.52,
+    238.53
+   ],
+   "ppo_beats_best_heuristic_significantly": false,
+   "threshold_minus_sleep_ci": [
+    -25.11,
+    9.21
+   ]
+  }
+ ],
+ "interval_method": "Margin intervals are 95% intervals combining the across-seed t-interval of the policy (n=3, ddof=1) with the across-episode standard error of the heuristic (n=100)."
+}

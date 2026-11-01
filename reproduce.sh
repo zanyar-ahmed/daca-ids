@@ -68,4 +68,17 @@ python measure_rl_training_time.py --train "$NSL_TR" --test "$NSL_TE"
 echo "== Section V-K: runtime, latency and memory footprint (Table XX, rows not marked (CPU)) =="
 python exp5_runtime.py --train "$NSL_TR"
 
+echo "== Section VI-E: CAGE Challenge 2 validation (CybORG, Scenario 2) =="
+# CybORG is deliberately NOT in requirements.txt: it is installed from the cage-challenge-2
+# repository and depends on the deprecated gym package, which pins an older Python than the
+# rest of this code needs. See README, "CAGE Challenge 2 validation (Section VI-E)".
+# The stage is skipped when CybORG is absent so the rest of this script still runs end to end.
+if python -c "import CybORG" >/dev/null 2>&1; then
+  python cyborg_baselines.py
+  python cyborg_ppo.py --timesteps 300000 --seeds 3 --eval-eps 100
+  python cyborg_merge.py
+else
+  echo "   CybORG not importable -- skipping (see README for the prerequisite)"
+fi
+
 echo "All experiments done. Results in ./results/ ; figures saved next to each script."
